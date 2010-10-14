@@ -170,7 +170,7 @@ class ComplianceTest(unittest.TestCase):
         self.mc.setattr("lkey", -2, 5, 0); # exptime, maxcount, ovflactoin
         self.assertEquals(1, self.mc.getattr("lkey", memcacheConstants.ATTR_COUNT))
         self.assertEquals(5, self.mc.getattr("lkey", memcacheConstants.ATTR_MAXCOUNT))
-        self.assertEquals(memcacheConstants.OVFL_ERROR,
+        self.assertEquals(memcacheConstants.OVFL_TAIL_TRIM,
                           self.mc.getattr("lkey", memcacheConstants.ATTR_OVFLACTION))
         self.mc.lop_insert("lkey", -1, "datum2")
         self.mc.lop_insert("lkey", -1, "datum3")
@@ -178,11 +178,6 @@ class ComplianceTest(unittest.TestCase):
         self.mc.lop_insert("lkey", -1, "datum5")
         self.assertEquals((17, 5, ["datum1","datum2","datum3","datum4","datum5"]),
                           self.mc.lop_get("lkey", 0, -1))
-        try:
-            self.mc.lop_insert("lkey", 3, "datum6")
-            self.fail("expected data structure full.")
-        except MemcachedError, e:
-            self.assertEquals(memcacheConstants.ERR_OVERFLOW, e.status)
         try:
             self.mc.lop_insert("lkey", 5, "datum6")
             self.fail("expected index out of range.")
@@ -193,34 +188,46 @@ class ComplianceTest(unittest.TestCase):
             self.fail("expected index out of range.")
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_INDEXOOR, e.status)
+        self.mc.lop_insert("lkey", 2, "datum0")
         self.mc.lop_insert("lkey", 0, "datum6")
         self.mc.lop_insert("lkey", 0, "datum7")
         self.mc.lop_insert("lkey", -1, "datum8")
-        self.assertEquals((17, 5, ["datum6","datum1","datum2","datum3","datum8"]),
+        self.assertEquals((17, 5, ["datum6","datum1","datum2","datum0","datum8"]),
                           self.mc.lop_get("lkey", 0, -1))
         self.mc.lop_insert("lkey", 4, "datum9")
-        self.assertEquals((17, 5, ["datum1","datum2","datum3","datum8","datum9"]),
+        self.assertEquals((17, 5, ["datum1","datum2","datum0","datum8","datum9"]),
                           self.mc.lop_get("lkey", 0, -1))
-        self.mc.lop_insert("lkey", -5, "datum0")
-        self.assertEquals((17, 5, ["datum0","datum1","datum2","datum3","datum8"]),
+        self.mc.lop_insert("lkey", -5, "datum3")
+        self.assertEquals((17, 5, ["datum3","datum1","datum2","datum0","datum8"]),
                           self.mc.lop_get("lkey", 0, -1))
         self.mc.setattr("lkey", -2, 0, memcacheConstants.OVFL_HEAD_TRIM) # exptime, maxcount, ovflaction
         self.assertEquals(memcacheConstants.OVFL_HEAD_TRIM,
                           self.mc.getattr("lkey", memcacheConstants.ATTR_OVFLACTION))
         self.mc.lop_insert("lkey", 2, "datums")
-        self.assertEquals((17, 5, ["datum1","datum2","datums","datum3","datum8"]),
+        self.assertEquals((17, 5, ["datum1","datum2","datums","datum0","datum8"]),
                           self.mc.lop_get("lkey", 0, -1))
         self.mc.lop_insert("lkey", 0, "datumt")
-        self.assertEquals((17, 5, ["datumt","datum1","datum2","datums","datum3"]),
+        self.assertEquals((17, 5, ["datumt","datum1","datum2","datums","datum0"]),
                           self.mc.lop_get("lkey", 0, -1))
-        self.mc.setattr("lkey", -2, 0, memcacheConstants.OVFL_TAIL_TRIM) # exptime, maxcount, ovflaction
-        self.assertEquals(memcacheConstants.OVFL_TAIL_TRIM,
+        self.mc.setattr("lkey", -2, 0, memcacheConstants.OVFL_ERROR) # exptime, maxcount, ovflaction
+        self.assertEquals(memcacheConstants.OVFL_ERROR,
                           self.mc.getattr("lkey", memcacheConstants.ATTR_OVFLACTION))
-        self.mc.lop_insert("lkey", 2, "datumu")
-        self.assertEquals((17, 5, ["datumt","datum1","datumu","datum2","datums"]),
-                          self.mc.lop_get("lkey", 0, -1))
-        self.mc.lop_insert("lkey", -1, "datumv")
-        self.assertEquals((17, 5, ["datum1","datumu","datum2","datums","datumv"]),
+        try:
+            self.mc.lop_insert("lkey", 2, "datumu")
+            self.fail("expected datu structure full.")
+        except MemcachedError, e:
+            self.assertEquals(memcacheConstants.ERR_OVERFLOW, e.status)
+        try:
+            self.mc.lop_insert("lkey", 0, "datumu")
+            self.fail("expected datu structure full.")
+        except MemcachedError, e:
+            self.assertEquals(memcacheConstants.ERR_OVERFLOW, e.status)
+        try:
+            self.mc.lop_insert("lkey", -1, "datumu")
+            self.fail("expected datu structure full.")
+        except MemcachedError, e:
+            self.assertEquals(memcacheConstants.ERR_OVERFLOW, e.status)
+        self.assertEquals((17, 5, ["datumt","datum1","datum2","datums","datum0"]),
                           self.mc.lop_get("lkey", 0, -1))
         try:
             self.mc.setattr("lkey", -2, 0, memcacheConstants.OVFL_SMALLEST_TRIM)
