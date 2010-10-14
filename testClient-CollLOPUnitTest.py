@@ -156,9 +156,9 @@ class ComplianceTest(unittest.TestCase):
             self.assertEquals(memcacheConstants.ERR_INDEXOOR, e.status)
         try:
             self.mc.lop_insert("lkey", 1, "datum_new")
-            self.fail("expected bad value length.")
+            self.fail("expected bad value.")
         except MemcachedError, e:
-            self.assertEquals(memcacheConstants.ERR_BADVLEN, e.status)
+            self.assertEquals(memcacheConstants.ERR_BADVALUE, e.status)
         self.mc.lop_insert("lkey", 1, "datum1")
         self.mc.delete("lkey")
         self.assertNotExists("lkey")
@@ -265,49 +265,49 @@ class ComplianceTest(unittest.TestCase):
         self.mc.bop_insert("bkey", 1, "datum0", 1, 15)
         try:
             self.mc.lop_insert("x", -1, "datum1")
-            self.fail("expected not list item.")
+            self.fail("expected not supported operation, bad type.")
         except MemcachedError, e:
-            self.assertEquals(memcacheConstants.ERR_NOTLIST, e.status)
+            self.assertEquals(memcacheConstants.ERR_BADTYPE, e.status)
         try:
             self.mc.lop_insert("skey", -1, "datum1")
-            self.fail("expected not list item.")
+            self.fail("expected not supported operation, bad type.")
         except MemcachedError, e:
-            self.assertEquals(memcacheConstants.ERR_NOTLIST, e.status)
+            self.assertEquals(memcacheConstants.ERR_BADTYPE, e.status)
         try:
             self.mc.lop_insert("bkey", -1, "datum1")
-            self.fail("expected not list item.")
+            self.fail("expected not supported operation, bad type.")
         except MemcachedError, e:
-            self.assertEquals(memcacheConstants.ERR_NOTLIST, e.status)
+            self.assertEquals(memcacheConstants.ERR_BADTYPE, e.status)
         try:
             self.mc.lop_get("x", 0, -1)
-            self.fail("expected not list item.")
+            self.fail("expected not supported operation, bad type.")
         except MemcachedError, e:
-            self.assertEquals(memcacheConstants.ERR_NOTLIST, e.status)
+            self.assertEquals(memcacheConstants.ERR_BADTYPE, e.status)
         try:
             self.mc.lop_get("skey", 0, -1)
-            self.fail("expected not list item.")
+            self.fail("expected not supported operation, bad type.")
         except MemcachedError, e:
-            self.assertEquals(memcacheConstants.ERR_NOTLIST, e.status)
+            self.assertEquals(memcacheConstants.ERR_BADTYPE, e.status)
         try:
             self.mc.lop_get("bkey", 0, -1)
-            self.fail("expected not list item.")
+            self.fail("expected not supported operation, bad type.")
         except MemcachedError, e:
-            self.assertEquals(memcacheConstants.ERR_NOTLIST, e.status)
+            self.assertEquals(memcacheConstants.ERR_BADTYPE, e.status)
         try:
             self.mc.lop_delete("x", 0, -1)
-            self.fail("expected not list item.")
+            self.fail("expected not supported operation, bad type.")
         except MemcachedError, e:
-            self.assertEquals(memcacheConstants.ERR_NOTLIST, e.status)
+            self.assertEquals(memcacheConstants.ERR_BADTYPE, e.status)
         try:
             self.mc.lop_delete("skey", 0, -1)
-            self.fail("expected not list item.")
+            self.fail("expected not supported operation, bad type.")
         except MemcachedError, e:
-            self.assertEquals(memcacheConstants.ERR_NOTLIST, e.status)
+            self.assertEquals(memcacheConstants.ERR_BADTYPE, e.status)
         try:
             self.mc.lop_delete("bkey", 0, -1)
-            self.fail("expected not list item.")
+            self.fail("expected not supported operation, bad type.")
         except MemcachedError, e:
-            self.assertEquals(memcacheConstants.ERR_NOTLIST, e.status)
+            self.assertEquals(memcacheConstants.ERR_BADTYPE, e.status)
         self.mc.delete("skey")
         self.mc.delete("bkey")
         self.assertNotExists("skey")
@@ -323,39 +323,39 @@ class ComplianceTest(unittest.TestCase):
                           self.mc.lop_get("lkey", 0, -1))
         try:
             self.mc.set("lkey", 5, 19, "some value")
-            self.fail("expected not kv item.")
+            self.fail("expected not supported operation, bad type.")
         except MemcachedError, e:
-            self.assertEquals(memcacheConstants.ERR_NOTKV, e.status)
+            self.assertEquals(memcacheConstants.ERR_BADTYPE, e.status)
         try:
             self.mc.replace("lkey", 5, 19, "other value")
-            self.fail("expected not kv item.")
+            self.fail("expected not supported operation, bad type.")
         except MemcachedError, e:
-            self.assertEquals(memcacheConstants.ERR_NOTKV, e.status)
+            self.assertEquals(memcacheConstants.ERR_BADTYPE, e.status)
         try:
             self.mc.prepend("lkey", "thing")
-            self.fail("expected not kv item.")
+            self.fail("expected not supported operation, bad type.")
         except MemcachedError, e:
-            self.assertEquals(memcacheConstants.ERR_NOTKV, e.status)
+            self.assertEquals(memcacheConstants.ERR_BADTYPE, e.status)
         try:
             self.mc.append("lkey", "thing")
-            self.fail("expected not kv item.")
+            self.fail("expected not supported operation, bad type.")
         except MemcachedError, e:
-            self.assertEquals(memcacheConstants.ERR_NOTKV, e.status)
+            self.assertEquals(memcacheConstants.ERR_BADTYPE, e.status)
         try:
             self.mc.incr("lkey", 1)
-            self.fail("expected not kv item.")
+            self.fail("expected not supported operation, bad type.")
         except MemcachedError, e:
-            self.assertEquals(memcacheConstants.ERR_NOTKV, e.status)
+            self.assertEquals(memcacheConstants.ERR_BADTYPE, e.status)
         try:
             self.mc.decr("lkey", 1)
-            self.fail("expected not kv item.")
+            self.fail("expected not supported operation, bad type.")
         except MemcachedError, e:
-            self.assertEquals(memcacheConstants.ERR_NOTKV, e.status)
+            self.assertEquals(memcacheConstants.ERR_BADTYPE, e.status)
         try:
             self.mc.get("lkey")
-            self.fail("expected not kv item.")
+            self.fail("expected not supported operation, bad type.")
         except MemcachedError, e:
-            self.assertEquals(memcacheConstants.ERR_NOTKV, e.status)
+            self.assertEquals(memcacheConstants.ERR_BADTYPE, e.status)
         self.mc.delete("lkey")
         self.assertNotExists("lkey")
 
