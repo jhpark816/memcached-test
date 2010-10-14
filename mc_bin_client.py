@@ -144,6 +144,151 @@ class MemcachedClient(object):
         self._mutate(memcacheConstants.CMD_SET, key, exp, flags,
             oldVal, val)
 
+# COLLECTION: ATTR begin
+    def getattr(self, key, attrid):
+        """Add an element value into the given list """
+        data = self._doCmd(memcacheConstants.CMD_GETATTR, key, '')[-1]
+        flags, exptime, count, maxcount, fixed, type, ovflaction, reserved1, reserved2 = \
+               struct.unpack(memcacheConstants.GETATTR_RES_FMT, data)
+        if attrid == memcacheConstants.ATTR_FLAGS:
+           return flags
+        elif attrid == memcacheConstants.ATTR_EXPIRETIME:
+           return exptime
+        elif attrid == memcacheConstants.ATTR_COUNT:
+           return count
+        elif attrid == memcacheConstants.ATTR_MAXCOUNT:
+           return maxcount
+        elif attrid == memcacheConstants.ATTR_FIXED:
+           return fixed
+        elif attrid == memcacheConstants.ATTR_TYPE:
+           return type
+        elif attrid == memcacheConstants.ATTR_OVFLACTION:
+           return ovflaction
+        else:
+           return -1
+
+    def setattr(self, key, exptime, maxcount, ovflaction):
+        """Add an element value into the given list """
+        return self._doCmd(memcacheConstants.CMD_SETATTR, key, '',
+                           struct.pack(memcacheConstants.SETATTR_PKT_FMT,
+                                       exptime, maxcount, ovflaction, 0, 0, 0))
+# COLLECTION: ATTR end
+
+# COLLECTION: LOP begin
+    def lop_insert(self, key, index, val, create=0, flags=0, fixed=0):
+        """Insert an element into the given list """
+        return self._doCmd(memcacheConstants.CMD_LOP_INSERT, key, val,
+                           struct.pack(memcacheConstants.LOP_INS_PKT_FMT,
+                                       index, flags, create, fixed, 0, 0))
+
+    def lop_delete(self, key, from_index, to_index):
+        """Delete some elements from the given list """
+        return self._doCmd(memcacheConstants.CMD_LOP_DELETE, key, '',
+                           struct.pack(memcacheConstants.LOP_DEL_PKT_FMT,
+                                       from_index, to_index))
+
+    def __parseLOPGet(self, data):
+        """ parse LOP GET result """
+        flags = struct.unpack(memcacheConstants.VLENG_RES_FMT, data[:4])[0]
+        count = struct.unpack(memcacheConstants.VLENG_RES_FMT, data[4:8])[0]
+        offset = 8
+        vlen = []
+        for n in range(count):
+            vlen.append(struct.unpack(memcacheConstants.VLENG_RES_FMT, data[offset:offset+4])[0])
+            offset += 4
+        vals = []
+        for n in range(count):
+            vals.append(data[offset:offset+vlen[n]])
+            offset += vlen[n]
+        return flags, count, vals
+
+    def lop_get(self, key, from_index, to_index, delete=0):
+        """Get(with delete) some elements from the given list """
+        data = self._doCmd(memcacheConstants.CMD_LOP_GET, key, '',
+                           struct.pack(memcacheConstants.LOP_GET_PKT_FMT,
+                                       from_index, to_index, delete, 0, 0, 0))[-1]
+        return self.__parseLOPGet(data)
+# COLLECTION : LOP end
+
+# COLLECTION : SOP begin
+    def sop_insert(self, key, val, create=0, flags=0, fixed=0):
+        """Insert an element into the given set """
+        return self._doCmd(memcacheConstants.CMD_SOP_INSERT, key, val,
+                           struct.pack(memcacheConstants.SOP_INS_PKT_FMT,
+                                       flags, create, fixed, 0, 0))
+
+    def sop_delete(self, key, val):
+        """Delete an element from the given set """
+        return self._doCmd(memcacheConstants.CMD_SOP_DELETE, key, val)
+
+    def sop_exist(self, key, val):
+        """Check if the given value exists in the given set """
+        data = self._doCmd(memcacheConstants.CMD_SOP_EXIST, key, val)[-1]
+        return struct.unpack(memcacheConstants.EXIST_RES_FMT, data)[0]
+
+    def __parseSOPGet(self, data):
+        """ parse SOP GET result """
+        flags = struct.unpack(memcacheConstants.VLENG_RES_FMT, data[:4])[0]
+        count = struct.unpack(memcacheConstants.VLENG_RES_FMT, data[4:8])[0]
+        offset = 8
+        vlen = []
+        for n in range(count):
+            vlen.append(struct.unpack(memcacheConstants.VLENG_RES_FMT, data[offset:offset+4])[0])
+            offset += 4
+        vals = []
+        for n in range(count):
+            vals.append(data[offset:offset+vlen[n]])
+            offset += vlen[n]
+        return flags, count, set(vals)
+
+    def sop_get(self, key, count, delete=0):
+        """Get(with delete) some elements from the given set """
+        data = self._doCmd(memcacheConstants.CMD_SOP_GET, key, '',
+                           struct.pack(memcacheConstants.SOP_GET_PKT_FMT,
+                                       count, delete, 0, 0, 0))[-1]
+        return self.__parseSOPGet(data)
+# COLLECTION : SOP end
+
+# COLLECTION : BOP begin
+    def bop_insert(self, key, bkey, val, create=0, flags=0, fixed=0):
+        """Insert an element into the given b+tree """
+        return self._doCmd(memcacheConstants.CMD_BOP_INSERT, key, val,
+                           struct.pack(memcacheConstants.BOP_INS_PKT_FMT,
+                                       bkey, flags, create, fixed, 0, 0))
+
+    def bop_delete(self, key, from_bkey, to_bkey, count=0):
+        """Delete some elements from the given b+tree """
+        return self._doCmd(memcacheConstants.CMD_BOP_DELETE, key, '',
+                           struct.pack(memcacheConstants.BOP_DEL_PKT_FMT,
+                                       from_bkey, to_bkey, count))
+
+    def __parseBOPGet(self, data):
+        """ parse BOP GET result """
+        flags = struct.unpack(memcacheConstants.VLENG_RES_FMT, data[:4])[0]
+        count = struct.unpack(memcacheConstants.VLENG_RES_FMT, data[4:8])[0]
+        offset = 8
+        bkey = []
+        for n in range(count):
+            bkey.append(struct.unpack(memcacheConstants.BKEY_RES_FMT, data[offset:offset+8])[0])
+            offset += 8
+        vlen = []
+        for n in range(count):
+            vlen.append(struct.unpack(memcacheConstants.VLENG_RES_FMT, data[offset:offset+4])[0])
+            offset += 4
+        vals = []
+        for n in range(count):
+            vals.append(data[offset:offset+vlen[n]])
+            offset += vlen[n]
+        return flags, count, bkey, vals
+
+    def bop_get(self, key, from_bkey, to_bkey, count=0, delete=0):
+        """Get(with delete) some elements from the given b+tree """
+        data = self._doCmd(memcacheConstants.CMD_BOP_GET, key, '',
+                           struct.pack(memcacheConstants.BOP_GET_PKT_FMT,
+                                       from_bkey, to_bkey, count, delete, 0, 0, 0))[-1]
+        return self.__parseBOPGet(data)
+# COLLECTION : BOP end
+
     def version(self):
         """Get the value for a given key within the memcached server."""
         return self._doCmd(memcacheConstants.CMD_VERSION, '', '')
