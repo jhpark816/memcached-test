@@ -48,7 +48,7 @@ class ComplianceTest(unittest.TestCase):
 
     def testLOPLongRun(self):
         """ Test lop long run. """
-        key_cnt_ini = 500
+        key_cnt_ini = 600
         key_cnt_run = 500
         dat_cnt = 4000
         print "LOP prepare begin"  
@@ -67,9 +67,10 @@ class ComplianceTest(unittest.TestCase):
         print "LOP run begin"  
         for x in range(0, key_cnt_run):
             """ LOP insert """
-            lkey = "lkey" + str(x+key_cnt_ini)
-            if x % 2 == 0: fixed = 0
-            else:          fixed = 1
+            kidx = x + key_cnt_ini
+            lkey = "lkey" + str(kidx)
+            if kidx % 2 == 0: fixed = 0
+            else:             fixed = 1
             for y in range(0, dat_cnt):
                 data = self.getData(lkey, y, fixed)
                 if y == 0: create = 1

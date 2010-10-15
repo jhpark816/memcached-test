@@ -48,7 +48,7 @@ class ComplianceTest(unittest.TestCase):
 
     def testBOPLongRun(self):
         """ Test bop long run. """
-        key_cnt_ini = 500
+        key_cnt_ini = 600
         key_cnt_run = 500
         dat_cnt = 4000
         print "BOP prepare begin"  
@@ -67,9 +67,10 @@ class ComplianceTest(unittest.TestCase):
         print "BOP run begin"  
         for x in range(0, key_cnt_run):
             """ BOP insert """
-            bkey = "bkey" + str(x+key_cnt_ini)
-            if x % 2 == 0: fixed = 0
-            else:          fixed = 1
+            kidx = x + key_cnt_ini
+            bkey = "bkey" + str(kidx)
+            if kidx % 2 == 0: fixed = 0
+            else:             fixed = 1
             for y in range(0, dat_cnt):
                 data = self.getData(bkey, y, fixed)
                 if y == 0: create = 1

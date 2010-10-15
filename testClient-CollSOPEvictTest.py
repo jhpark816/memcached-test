@@ -48,7 +48,7 @@ class ComplianceTest(unittest.TestCase):
 
     def testSOPLongRun(self):
         """ Test sop long run. """
-        key_cnt_ini = 500
+        key_cnt_ini = 600
         key_cnt_run = 500
         dat_cnt = 4000
         print "SOP prepare begin"  
@@ -67,9 +67,10 @@ class ComplianceTest(unittest.TestCase):
         print "SOP run begin"  
         for x in range(0, key_cnt_run):
             """ SOP insert """
-            skey = "skey" + str(x+key_cnt_ini)
-            if x % 2 == 0: fixed = 0
-            else:          fixed = 1
+            kidx = x + key_cnt_ini
+            skey = "skey" + str(kidx)
+            if kidx % 2 == 0: fixed = 0
+            else:             fixed = 1
             vals = []
             for y in range(0, dat_cnt):
                 data = self.getData(skey, y, fixed)
