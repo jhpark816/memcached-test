@@ -194,20 +194,21 @@ class ComplianceTest(unittest.TestCase):
             self.mc.bop_delete("bkey", 15550, 17000, 50);
             self.mc.bop_delete("bkey", 8700, 4350, 50);
             self.mc.bop_delete("bkey", 0, 2000, 100);
+            self.mc.bop_delete("bkey", 2020, 2020);
             self.mc.bop_delete("bkey", 22000, 2000, 100);
-            self.assertEquals(1500, self.mc.getattr("bkey", memcacheConstants.ATTR_COUNT))
+            self.assertEquals(1499, self.mc.getattr("bkey", memcacheConstants.ATTR_COUNT))
             self.assertBOPGet("bkey", width, flags, fixed, 3000, 5000, 100, 1)
             self.assertBOPGet("bkey", width, flags, fixed, 13000, 11000, 100, 1)
             self.assertBOPGet("bkey", width, flags, fixed, 13400, 15300, 50, 1)
             self.assertBOPGet("bkey", width, flags, fixed, 7200, 5980, 50, 1)
-            self.assertEquals(1200, self.mc.getattr("bkey", memcacheConstants.ATTR_COUNT))
+            self.assertEquals(1199, self.mc.getattr("bkey", memcacheConstants.ATTR_COUNT))
             self.assertBOPGet("bkey", width, flags, fixed, 5800, 6200, 40)
             self.assertBOPGet("bkey", width, flags, fixed, 5820, 610, 70)
             self.assertBOPGet("bkey", width, flags, fixed, 2100, 3200, 60)
             self.assertBOPGet("bkey", width, flags, fixed, 15000, 14000, 30)
             self.assertBOPGet("bkey", width, flags, fixed, 14200, 14400, 100)
             self.assertBOPGet("bkey", width, flags, fixed, 14200, 14900, 100)
-            self.assertEquals(1200, self.mc.getattr("bkey", memcacheConstants.ATTR_COUNT))
+            self.assertEquals(1199, self.mc.getattr("bkey", memcacheConstants.ATTR_COUNT))
             if (fixed == 0):
                 self.assertEquals((flags, 1, [2010], ["bkey_data_2010"]),
                                   self.mc.bop_get("bkey", 0, 2010))
