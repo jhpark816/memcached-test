@@ -59,6 +59,8 @@ class ComplianceTest(unittest.TestCase):
                               self.mc.lop_get("lkey", 0, -1))
             self.assertEquals((17, 3, ["datum0", "datum1", "datum2"]),
                               self.mc.lop_get("lkey", 0, 2))
+            self.assertEquals((17, 3, ["datum2", "datum3", "datum4"]),
+                              self.mc.lop_get("lkey", 2, 8))
             self.assertEquals((17, 2, ["datum4", "datum3"]), self.mc.lop_get("lkey", -1, -2))
             self.assertEquals((17, 2, ["datum2", "datum3"]), self.mc.lop_get("lkey", -3, 3))
             self.assertEquals((17, 2, ["datum3", "datum2"]), self.mc.lop_get("lkey", -2, 2))
