@@ -281,11 +281,11 @@ class MemcachedClient(object):
             offset += vlen[n]
         return flags, count, bkey, vals
 
-    def bop_get(self, key, from_bkey, to_bkey, count=0, delete=0):
+    def bop_get(self, key, from_bkey, to_bkey, offset=0, count=0, delete=0):
         """Get(with delete) some elements from the given b+tree """
         data = self._doCmd(memcacheConstants.CMD_BOP_GET, key, '',
                            struct.pack(memcacheConstants.BOP_GET_PKT_FMT,
-                                       from_bkey, to_bkey, count, delete, 0, 0, 0))[-1]
+                                       from_bkey, to_bkey, offset, count, delete, 0, 0, 0))[-1]
         return self.__parseBOPGet(data)
 # COLLECTION : BOP end
 

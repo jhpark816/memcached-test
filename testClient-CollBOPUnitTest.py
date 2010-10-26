@@ -54,13 +54,17 @@ class ComplianceTest(unittest.TestCase):
                 data = key + "_data_"
             self.mc.bop_insert(key, x, data, create, flags, fixed)
 
-    def assertBOPGet(self, key, width, flags, fixed, from_bkey, to_bkey, count=0, delete=0):
+    def assertBOPGet(self, key, width, flags, fixed, from_bkey, to_bkey, offset=0, count=0, delete=0):
         valcnt = 0
         res_bkey = []
         res_data = []
+        saved_from_bkey = from_bkey
+        saved_to_bkey   = to_bkey
         if (from_bkey <= to_bkey):
             if ((from_bkey % width) != 0): 
                 from_bkey = from_bkey + (width - (from_bkey % width))
+            if (offset > 0):
+                from_bkey = from_bkey + (offset * width) 
             if ((to_bkey % width) != 0):
                 to_bkey = to_bkey - (to_bkey % width)
             to_bkey = to_bkey + 1  
@@ -68,6 +72,8 @@ class ComplianceTest(unittest.TestCase):
         else: 
             if ((from_bkey % width) != 0): 
                 from_bkey = from_bkey - (from_bkey % width)
+            if (offset > 0):
+                from_bkey = from_bkey - (offset * width) 
             if ((to_bkey % width) != 0):
                 to_bkey = to_bkey + (width - (to_bkey % width))
             to_bkey = to_bkey - 1
@@ -83,7 +89,7 @@ class ComplianceTest(unittest.TestCase):
             if (count > 0 and valcnt >= count):
                 break
         self.assertEquals((flags, valcnt, res_bkey, res_data),
-                          self.mc.bop_get(key, from_bkey, to_bkey, count, delete))
+                          self.mc.bop_get(key, saved_from_bkey, saved_to_bkey, offset, count, delete))
           
     def testBOPInsertGet(self):
         """ Test bop insert, get functionality. """
@@ -127,11 +133,15 @@ class ComplianceTest(unittest.TestCase):
             self.assertBOPGet("bkey", width, flags, fixed, 6500, 6500)
             self.assertBOPGet("bkey", width, flags, fixed, 2300, 2300)
             self.assertBOPGet("bkey", width, flags, fixed, 2000, 2255)
+            self.assertBOPGet("bkey", width, flags, fixed, 2000, 2255, 10, 20)
+            self.assertBOPGet("bkey", width, flags, fixed, 2000, 2255, 10, 0)
             self.assertBOPGet("bkey", width, flags, fixed, 8700, 150)
-            self.assertBOPGet("bkey", width, flags, fixed, 7690, 8870, 50)
-            self.assertBOPGet("bkey", width, flags, fixed, 6540, 2300, 80)
-            self.assertBOPGet("bkey", width, flags, fixed, 5, 1000, 20)
-            self.assertBOPGet("bkey", width, flags, fixed, 10005, 9000, 30)
+            self.assertBOPGet("bkey", width, flags, fixed, 7690, 8870, 0, 50)
+            self.assertBOPGet("bkey", width, flags, fixed, 6540, 2300, 0, 80)
+            self.assertBOPGet("bkey", width, flags, fixed, 6540, 2300, 40, 40);
+            self.assertBOPGet("bkey", width, flags, fixed, 6540, 2300, 40, 0);
+            self.assertBOPGet("bkey", width, flags, fixed, 5, 1000, 0, 20)
+            self.assertBOPGet("bkey", width, flags, fixed, 10005, 9000, 0, 30)
             try:
                 self.mc.bop_get("bkey", 655, 655)
                 self.fail("expected NOT_FOUND_ELEMENT.")
@@ -197,17 +207,18 @@ class ComplianceTest(unittest.TestCase):
             self.mc.bop_delete("bkey", 2020, 2020);
             self.mc.bop_delete("bkey", 22000, 2000, 100);
             self.assertEquals(1499, self.mc.getattr("bkey", memcacheConstants.ATTR_COUNT))
-            self.assertBOPGet("bkey", width, flags, fixed, 3000, 5000, 100, 1)
-            self.assertBOPGet("bkey", width, flags, fixed, 13000, 11000, 100, 1)
-            self.assertBOPGet("bkey", width, flags, fixed, 13400, 15300, 50, 1)
-            self.assertBOPGet("bkey", width, flags, fixed, 7200, 5980, 50, 1)
+            self.assertBOPGet("bkey", width, flags, fixed, 3000, 5000, 0, 100, 1)
+            self.assertBOPGet("bkey", width, flags, fixed, 13000, 11000, 50, 50, 1)
+            self.assertBOPGet("bkey", width, flags, fixed, 13000, 11000, 0, 50, 1)
+            self.assertBOPGet("bkey", width, flags, fixed, 13400, 15300, 0, 50, 1)
+            self.assertBOPGet("bkey", width, flags, fixed, 7200, 5980, 0, 50, 1)
             self.assertEquals(1199, self.mc.getattr("bkey", memcacheConstants.ATTR_COUNT))
-            self.assertBOPGet("bkey", width, flags, fixed, 5800, 6200, 40)
-            self.assertBOPGet("bkey", width, flags, fixed, 5820, 610, 70)
-            self.assertBOPGet("bkey", width, flags, fixed, 2100, 3200, 60)
-            self.assertBOPGet("bkey", width, flags, fixed, 15000, 14000, 30)
-            self.assertBOPGet("bkey", width, flags, fixed, 14200, 14400, 100)
-            self.assertBOPGet("bkey", width, flags, fixed, 14200, 14900, 100)
+            self.assertBOPGet("bkey", width, flags, fixed, 5800, 6200, 0, 40)
+            self.assertBOPGet("bkey", width, flags, fixed, 5820, 610, 0, 70)
+            self.assertBOPGet("bkey", width, flags, fixed, 2100, 3200, 0, 60)
+            self.assertBOPGet("bkey", width, flags, fixed, 15000, 14000, 0, 30)
+            self.assertBOPGet("bkey", width, flags, fixed, 14200, 14400, 0, 100)
+            self.assertBOPGet("bkey", width, flags, fixed, 14200, 14900, 0, 100)
             self.assertEquals(1199, self.mc.getattr("bkey", memcacheConstants.ATTR_COUNT))
             if (fixed == 0):
                 self.assertEquals((flags, 1, [2010], ["bkey_data_2010"]),
@@ -235,7 +246,7 @@ class ComplianceTest(unittest.TestCase):
             except MemcachedError, e:
                 self.assertEquals(memcacheConstants.ERR_ELEM_NOENT, e.status)
             try:
-                self.mc.bop_get("bkey", 0, 900, 1)
+                self.mc.bop_get("bkey", 0, 900, 0, 1)
                 self.fail("expected NOT_FOUND_ELEMENT.")
             except MemcachedError, e:
                 self.assertEquals(memcacheConstants.ERR_ELEM_NOENT, e.status)
