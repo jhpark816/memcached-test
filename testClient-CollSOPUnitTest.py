@@ -124,11 +124,11 @@ class ComplianceTest(unittest.TestCase):
             self.fail("expected ELEMENT_EXISTS.")
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_ELEM_EXISTS, e.status)
-        try:
-            self.mc.sop_insert("skey", "datum_new")
-            self.fail("expected bad value.")
-        except MemcachedError, e:
-            self.assertEquals(memcacheConstants.ERR_BADVALUE, e.status)
+        #try:
+        #    self.mc.sop_insert("skey", "datum_new")
+        #    self.fail("expected bad value.")
+        #except MemcachedError, e:
+        #    self.assertEquals(memcacheConstants.ERR_BADVALUE, e.status)
         self.mc.sop_insert("skey", "datum1")
         self.mc.delete("skey")
         self.assertNotExists("skey")

@@ -156,11 +156,11 @@ class ComplianceTest(unittest.TestCase):
             self.fail("expected index out of range.")
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_INDEXOOR, e.status)
-        try:
-            self.mc.lop_insert("lkey", 1, "datum_new")
-            self.fail("expected bad value.")
-        except MemcachedError, e:
-            self.assertEquals(memcacheConstants.ERR_BADVALUE, e.status)
+        #try:
+        #    self.mc.lop_insert("lkey", 1, "datum_new")
+        #    self.fail("expected bad value.")
+        #except MemcachedError, e:
+        #    self.assertEquals(memcacheConstants.ERR_BADVALUE, e.status)
         self.mc.lop_insert("lkey", 1, "datum1")
         self.mc.delete("lkey")
         self.assertNotExists("lkey")
