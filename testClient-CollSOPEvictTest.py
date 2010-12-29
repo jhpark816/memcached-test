@@ -39,11 +39,8 @@ class ComplianceTest(unittest.TestCase):
         self.assertTrue(gv is not None)
         self.assertEquals((gv[0], gv[2]), exp)
 
-    def getData(self, key, index, fixed):
+    def getData(self, key, index):
         data = key + "_data_" + str(index)
-        if (fixed == 1 and len(data) < 20):
-            for s in range(len(data), 20):
-                data = data + "A"
         return data
 
     def testSOPLongRun(self):
@@ -54,13 +51,11 @@ class ComplianceTest(unittest.TestCase):
         print "SOP prepare begin"  
         for x in range(0, key_cnt_ini):
             skey = "skey" + str(x)
-            if x % 2 == 0: fixed = 0
-            else:          fixed = 1
             for y in range(0, dat_cnt):
-                data = self.getData(skey, y, fixed)
+                data = self.getData(skey, y)
                 if y == 0: create = 1
                 else:      create = 0
-                self.mc.sop_insert(skey, data, create, 13, fixed)
+                self.mc.sop_insert(skey, data, create, 13, 0, 0)
             if x % 10 == 9:
                print "  " + str(x+1) + " sets created"
         print "SOP prepare end"  
@@ -69,26 +64,22 @@ class ComplianceTest(unittest.TestCase):
             """ SOP insert """
             kidx = x + key_cnt_ini
             skey = "skey" + str(kidx)
-            if kidx % 2 == 0: fixed = 0
-            else:             fixed = 1
             vals = []
             for y in range(0, dat_cnt):
-                data = self.getData(skey, y, fixed)
+                data = self.getData(skey, y)
                 vals.append(data) 
                 if y == 0: create = 1
                 else:      create = 0
-                self.mc.sop_insert(skey, data, create, 13, fixed)
+                self.mc.sop_insert(skey, data, create, 13, 0, 0)
             """ SOP get """
             self.assertEquals((13, dat_cnt, set(vals)), self.mc.sop_get(skey, dat_cnt))
             """ rcnt: run count """
             """ didx: data index """
             for kidx in range(x+key_cnt_ini, x+key_cnt_ini-10, -1):
                 skey = "skey" + str(kidx)
-                if kidx % 2 == 0: fixed = 0
-                else:             fixed = 1
                 for rcnt in range(0, 50): 
                     didx = random.randrange(0, dat_cnt/2)
-                    data = self.getData(skey, didx, fixed)
+                    data = self.getData(skey, didx)
                     self.assertEquals(1, self.mc.sop_exist(skey, data))
             for kidx in range(x, x+10, 1):
                 skey = "skey" + str(kidx)
@@ -96,11 +87,9 @@ class ComplianceTest(unittest.TestCase):
             """ SOP delete """
             for kidx in range(x+key_cnt_ini, x+key_cnt_ini-10, -1):
                 skey = "skey" + str(kidx)
-                if kidx % 2 == 0: fixed = 0
-                else:             fixed = 1
                 for rcnt in range(0, 50): 
                     didx = random.randrange(dat_cnt/2, dat_cnt)
-                    data = self.getData(skey, didx, fixed)
+                    data = self.getData(skey, didx)
                     exist = self.mc.sop_exist(skey, data)
                     if (exist == 1):
                         self.mc.sop_delete(skey, data)

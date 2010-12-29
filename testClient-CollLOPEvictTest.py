@@ -39,11 +39,8 @@ class ComplianceTest(unittest.TestCase):
         self.assertTrue(gv is not None)
         self.assertEquals((gv[0], gv[2]), exp)
 
-    def getData(self, key, index, fixed):
+    def getData(self, key, index):
         data = key + "_data_" + str(index)
-        if (fixed == 1 and len(data) < 20):
-            for s in range(len(data), 20):
-                data = data + "A"
         return data
 
     def testLOPLongRun(self):
@@ -54,13 +51,11 @@ class ComplianceTest(unittest.TestCase):
         print "LOP prepare begin"  
         for x in range(0, key_cnt_ini):
             lkey = "lkey" + str(x)
-            if x % 2 == 0: fixed = 0
-            else:          fixed = 1
             for y in range(0, dat_cnt):
-                data = self.getData(lkey, y, fixed)
+                data = self.getData(lkey, y)
                 if y == 0: create = 1
                 else:      create = 0
-                self.mc.lop_insert(lkey, -1, data, create, 17, fixed)
+                self.mc.lop_insert(lkey, -1, data, create, 17, 0, 0)
             if x % 10 == 9:
                print "  " + str(x+1) + " lists created"
         print "LOP prepare end"  
@@ -69,18 +64,14 @@ class ComplianceTest(unittest.TestCase):
             """ LOP insert """
             kidx = x + key_cnt_ini
             lkey = "lkey" + str(kidx)
-            if kidx % 2 == 0: fixed = 0
-            else:             fixed = 1
             for y in range(0, dat_cnt):
-                data = self.getData(lkey, y, fixed)
+                data = self.getData(lkey, y)
                 if y == 0: create = 1
                 else:      create = 0
-                self.mc.lop_insert(lkey, -1, data, create, 17, fixed)
+                self.mc.lop_insert(lkey, -1, data, create, 17, 0, 0)
             """ LOP get """
             for kidx in range(x+key_cnt_ini, x+key_cnt_ini-10, -1):
                 lkey = "lkey" + str(kidx)
-                if kidx % 2 == 0: fixed = 0
-                else:             fixed = 1
                 """ rcnt: run count """
                 """ dcnt: data count """
                 """ didx: data index """
@@ -91,12 +82,12 @@ class ComplianceTest(unittest.TestCase):
                     if lval <= rval:
                        dcnt = rval - lval + 1
                        for didx in range(lval, rval+1, 1):
-                           data = self.getData(lkey, didx, fixed)
+                           data = self.getData(lkey, didx)
                            vals.append(data)
                     else:
                        dcnt = lval - rval + 1;
                        for didx in range(lval, rval-1, -1):
-                           data = self.getData(lkey, didx, fixed)
+                           data = self.getData(lkey, didx)
                            vals.append(data)
                     self.assertEquals((17, dcnt, vals), self.mc.lop_get(lkey, lval, rval))
             for kidx in range(x, x+10, 1):

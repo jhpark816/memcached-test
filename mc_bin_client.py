@@ -167,19 +167,20 @@ class MemcachedClient(object):
         else:
            return -1
 
-    def setattr(self, key, exptime, maxcount, ovflaction):
+    def setattr(self, key, exptime_f, exptime, maxcount_f, maxcount, ovflaction_f, ovflaction):
         """Add an element value into the given list """
         return self._doCmd(memcacheConstants.CMD_SETATTR, key, '',
                            struct.pack(memcacheConstants.SETATTR_PKT_FMT,
-                                       exptime, maxcount, ovflaction, 0, 0, 0))
+                                       exptime, maxcount, ovflaction,
+                                       exptime_f, maxcount_f, ovflaction_f))
 # COLLECTION: ATTR end
 
 # COLLECTION: LOP begin
-    def lop_insert(self, key, index, val, create=0, flags=0, fixed=0):
+    def lop_insert(self, key, index, val, create=0, flags=0, exptime=0, maxcount=0):
         """Insert an element into the given list """
         return self._doCmd(memcacheConstants.CMD_LOP_INSERT, key, val,
                            struct.pack(memcacheConstants.LOP_INS_PKT_FMT,
-                                       index, flags, create, fixed, 0, 0))
+                                       index, flags, exptime, maxcount, create, 0, 0, 0))
 
     def lop_delete(self, key, from_index, to_index):
         """Delete some elements from the given list """
@@ -211,11 +212,11 @@ class MemcachedClient(object):
 # COLLECTION : LOP end
 
 # COLLECTION : SOP begin
-    def sop_insert(self, key, val, create=0, flags=0, fixed=0):
+    def sop_insert(self, key, val, create=0, flags=0, exptime=0, maxcount=0):
         """Insert an element into the given set """
         return self._doCmd(memcacheConstants.CMD_SOP_INSERT, key, val,
                            struct.pack(memcacheConstants.SOP_INS_PKT_FMT,
-                                       flags, create, fixed, 0, 0))
+                                       flags, exptime, maxcount, create, 0, 0, 0))
 
     def sop_delete(self, key, val):
         """Delete an element from the given set """
@@ -250,11 +251,11 @@ class MemcachedClient(object):
 # COLLECTION : SOP end
 
 # COLLECTION : BOP begin
-    def bop_insert(self, key, bkey, val, create=0, flags=0, fixed=0):
+    def bop_insert(self, key, bkey, val, create=0, flags=0, exptime=0, maxcount=0):
         """Insert an element into the given b+tree """
         return self._doCmd(memcacheConstants.CMD_BOP_INSERT, key, val,
                            struct.pack(memcacheConstants.BOP_INS_PKT_FMT,
-                                       bkey, flags, create, fixed, 0, 0))
+                                       bkey, flags, exptime, maxcount, create, 0, 0, 0))
 
     def bop_delete(self, key, from_bkey, to_bkey, count=0):
         """Delete some elements from the given b+tree """

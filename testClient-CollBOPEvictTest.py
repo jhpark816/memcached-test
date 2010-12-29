@@ -39,11 +39,8 @@ class ComplianceTest(unittest.TestCase):
         self.assertTrue(gv is not None)
         self.assertEquals((gv[0], gv[2]), exp)
 
-    def getData(self, key, index, fixed):
+    def getData(self, key, index):
         data = key + "_data_" + str(index)
-        if (fixed == 1 and len(data) < 20):
-            for s in range(len(data), 20):
-                data = data + "A"
         return data
 
     def testBOPLongRun(self):
@@ -54,13 +51,11 @@ class ComplianceTest(unittest.TestCase):
         print "BOP prepare begin"  
         for x in range(0, key_cnt_ini):
             bkey = "bkey" + str(x)
-            if x % 2 == 0: fixed = 0
-            else:          fixed = 1
             for y in range(0, dat_cnt):
-                data = self.getData(bkey, y, fixed)
+                data = self.getData(bkey, y)
                 if y == 0: create = 1
                 else:      create = 0
-                self.mc.bop_insert(bkey, y, data, create, 11, fixed)
+                self.mc.bop_insert(bkey, y, data, create, 11, 0, 0)
             if x % 10 == 9:
                print "  " + str(x+1) + " b+trees created"
         print "BOP prepare end"  
@@ -69,21 +64,17 @@ class ComplianceTest(unittest.TestCase):
             """ BOP insert """
             kidx = x + key_cnt_ini
             bkey = "bkey" + str(kidx)
-            if kidx % 2 == 0: fixed = 0
-            else:             fixed = 1
             for y in range(0, dat_cnt):
-                data = self.getData(bkey, y, fixed)
+                data = self.getData(bkey, y)
                 if y == 0: create = 1
                 else:      create = 0
-                self.mc.bop_insert(bkey, y, data, create, 11, fixed)
+                self.mc.bop_insert(bkey, y, data, create, 11, 0, 0)
             """ BOP get """
             """ rcnt: run count """
             """ dcnt: data count """
             """ didx: data index """
             for kidx in range(x+key_cnt_ini, x+key_cnt_ini-10, -1):
                 bkey = "bkey" + str(kidx)
-                if kidx % 2 == 0: fixed = 0
-                else:             fixed = 1
                 for rcnt in range(0, 10): 
                     keys = [] 
                     vals = []
@@ -92,13 +83,13 @@ class ComplianceTest(unittest.TestCase):
                     if lkey <= rkey:
                        dcnt = rkey - lkey + 1
                        for didx in range(lkey, rkey+1, 1):
-                           data = self.getData(bkey, didx, fixed)
+                           data = self.getData(bkey, didx)
                            keys.append(didx)
                            vals.append(data)
                     else:
                        dcnt = lkey - rkey + 1;
                        for didx in range(lkey, rkey-1, -1):
-                           data = self.getData(bkey, didx, fixed)
+                           data = self.getData(bkey, didx)
                            keys.append(didx)
                            vals.append(data)
                     self.assertEquals((11, dcnt, keys, vals), self.mc.bop_get(bkey, lkey, rkey))
@@ -108,8 +99,6 @@ class ComplianceTest(unittest.TestCase):
             """ BOP delete """
             kidx = x + key_cnt_ini
             bkey = "bkey" + str(kidx)
-            if kidx % 2 == 0: fixed = 0
-            else:             fixed = 1
             lkey = random.randrange(dat_cnt/2, dat_cnt)
             rkey = random.randrange(dat_cnt/2, dat_cnt)
             self.mc.bop_delete(bkey, lkey, rkey)
