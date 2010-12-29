@@ -148,7 +148,7 @@ class MemcachedClient(object):
     def getattr(self, key, attrid):
         """Add an element value into the given list """
         data = self._doCmd(memcacheConstants.CMD_GETATTR, key, '')[-1]
-        flags, exptime, count, maxcount, fixed, type, ovflaction, reserved1, reserved2 = \
+        flags, exptime, count, maxcount, type, ovflaction, reserved1, reserved2 = \
                struct.unpack(memcacheConstants.GETATTR_RES_FMT, data)
         if attrid == memcacheConstants.ATTR_FLAGS:
            return flags
@@ -158,8 +158,6 @@ class MemcachedClient(object):
            return count
         elif attrid == memcacheConstants.ATTR_MAXCOUNT:
            return maxcount
-        elif attrid == memcacheConstants.ATTR_FIXED:
-           return fixed
         elif attrid == memcacheConstants.ATTR_TYPE:
            return type
         elif attrid == memcacheConstants.ATTR_OVFLACTION:
