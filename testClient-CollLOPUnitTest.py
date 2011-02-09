@@ -42,8 +42,9 @@ class ComplianceTest(unittest.TestCase):
 # JHPARK: LOP test begin
     def testLOPInsertGet(self):
         """ Test lop insert, get functionality. """
+        create = 1
         self.assertNotExists("lkey")
-        self.mc.lop_insert("lkey", 0, "datum0", 1, 17, 0, 0)
+        self.mc.lop_insert("lkey", 0, "datum0", create, 17, 0, 0)
         self.mc.lop_insert("lkey", 1, "datum1")
         self.mc.lop_insert("lkey", 2, "datum2")
         self.mc.lop_insert("lkey", 3, "datum3")
@@ -78,8 +79,10 @@ class ComplianceTest(unittest.TestCase):
 
     def testLOPInsertDeletePop(self):
         """ Test lop insert, delete, get with delete functionality. """
+        create = 1
+        delete = 1
         self.assertNotExists("lkey")
-        self.mc.lop_insert("lkey", 0, "datum0", 1, 17, 0, -1)
+        self.mc.lop_insert("lkey", 0, "datum0", create, 17, 0, -1)
         self.mc.lop_insert("lkey", -1, "datum9")
         self.mc.lop_insert("lkey", 1, "datum1")
         self.mc.lop_insert("lkey", -2, "datum8")
@@ -108,32 +111,69 @@ class ComplianceTest(unittest.TestCase):
         self.assertEquals(5, self.mc.getattr("lkey", memcacheConstants.ATTR_COUNT))
         self.assertEquals((17, 5, ["datum0", "datum4", "datum5", "datum6", "datum9"]),
                           self.mc.lop_get("lkey", 0, -1))
-        self.assertEquals((17, 2, ["datum9","datum6"]), self.mc.lop_get("lkey", 9, -2, 1))
-        self.assertEquals((17, 1, ["datum4"]), self.mc.lop_get("lkey", 1, 1, 1))
+        self.assertEquals((17, 2, ["datum9","datum6"]), self.mc.lop_get("lkey", 9, -2, delete))
+        self.assertEquals((17, 1, ["datum4"]), self.mc.lop_get("lkey", 1, 1, delete))
         try:
-            self.mc.lop_get("lkey", 4, 5, 1)
+            self.mc.lop_get("lkey", 4, 5, delete)
             self.fail("expected index out of range.")
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_INDEXOOR, e.status)
         try:
-            self.mc.lop_get("lkey", -5, -7, 1)
+            self.mc.lop_get("lkey", -5, -7, delete)
             self.fail("expected index out of range.")
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_INDEXOOR, e.status)
         self.assertEquals(2, self.mc.getattr("lkey", memcacheConstants.ATTR_COUNT))
         self.assertEquals((17, 2, ["datum0", "datum5"]), self.mc.lop_get("lkey", 0, -1))
-        self.mc.lop_delete("lkey", 0, -1)
+        drop_if_empty = 1
+        self.mc.lop_delete("lkey", 0, -1, drop_if_empty)
+        self.assertNotExists("lkey")
+
+    def testEmptyCollectionOfListType(self):
+        """ Test empty list functionality. """
+        delete = 1
+        self.assertNotExists("lkey")
+        self.mc.lop_create("lkey", 17, 0, -1, 0)
+        self.mc.lop_insert("lkey", -1, "datum0")
+        self.mc.lop_insert("lkey", -1, "datum1")
+        self.mc.lop_insert("lkey", -1, "datum2")
+        self.mc.lop_insert("lkey", -1, "datum3")
+        self.mc.lop_insert("lkey", -1, "datum4")
+        self.assertEquals(5, self.mc.getattr("lkey", memcacheConstants.ATTR_COUNT))
+        self.assertEquals(10000, self.mc.getattr("lkey", memcacheConstants.ATTR_MAXCOUNT))
+        self.assertEquals((17, 5, ["datum0", "datum1","datum2","datum3", "datum4"]),
+                          self.mc.lop_get("lkey", 0, -1))
+        self.mc.lop_delete("lkey", 0, 2)
+        self.assertEquals((17, 2, ["datum3", "datum4"]),
+                           self.mc.lop_get("lkey", 0, -1, delete))
+        try:
+            self.mc.lop_delete("lkey", 0, -1)
+            self.fail("expected index out of range.")
+        except MemcachedError, e:
+            self.assertEquals(memcacheConstants.ERR_INDEXOOR, e.status)
+        try:
+            self.mc.lop_get("lkey", 0, -1)
+            self.fail("expected index out of range.")
+        except MemcachedError, e:
+            self.assertEquals(memcacheConstants.ERR_INDEXOOR, e.status)
+        self.mc.lop_insert("lkey", -1, "datum0")
+        self.mc.lop_insert("lkey", -1, "datum1")
+        self.mc.lop_insert("lkey", -1, "datum2")
+        drop_if_empty = 1
+        self.assertEquals((17, 3, ["datum0", "datum1","datum2"]),
+                          self.mc.lop_get("lkey", 0, -1, delete, drop_if_empty))
         self.assertNotExists("lkey")
 
     def testLOPInsertFailCheck(self):
         """ Test lop insert error check functionality. """
+        create = 1
         self.assertNotExists("lkey")
         try:
             self.mc.lop_insert("lkey", 0, "datum0")
             self.fail("expected not found error.")
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_NOT_FOUND, e.status)
-        self.mc.lop_insert("lkey", 0, "datum0", 1, 17, 0, 1000)
+        self.mc.lop_insert("lkey", 0, "datum0", create, 17, 0, 1000)
         try:
             self.mc.lop_insert("lkey", 2, "datum2")
             self.fail("expected index out of range.")
@@ -144,20 +184,17 @@ class ComplianceTest(unittest.TestCase):
             self.fail("expected index out of range.")
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_INDEXOOR, e.status)
-        #try:
-        #    self.mc.lop_insert("lkey", 1, "datum_new")
-        #    self.fail("expected bad value.")
-        #except MemcachedError, e:
-        #    self.assertEquals(memcacheConstants.ERR_BADVALUE, e.status)
+        self.mc.lop_insert("lkey", 1, "datum_new")
         self.mc.lop_insert("lkey", 1, "datum1")
         self.mc.delete("lkey")
         self.assertNotExists("lkey")
 
     def testLOPOverflowCheck(self):
         """ Test lop overflow functionality. """
+        create = 1 
         self.assertNotExists("lkey")
-        self.mc.lop_insert("lkey", -1, "datum1", 1, 17, 0, 1000)
-        self.mc.setattr("lkey", 0, 0, 1, 5, 0, 0); # exptime, maxcount, ovflactoin
+        self.mc.lop_insert("lkey", -1, "datum1", create, 17, 0, 1000)
+        self.mc.setattr("lkey", 0, 0, 1, 5, 0, 0, memcacheConstants.OVFL_NONE);
         self.assertEquals(1, self.mc.getattr("lkey", memcacheConstants.ATTR_COUNT))
         self.assertEquals(5, self.mc.getattr("lkey", memcacheConstants.ATTR_MAXCOUNT))
         self.assertEquals(memcacheConstants.OVFL_TAIL_TRIM,
@@ -190,7 +227,7 @@ class ComplianceTest(unittest.TestCase):
         self.mc.lop_insert("lkey", -5, "datum3")
         self.assertEquals((17, 5, ["datum3","datum1","datum2","datum0","datum8"]),
                           self.mc.lop_get("lkey", 0, -1))
-        self.mc.setattr("lkey", 0, 0, 0, 0, 1, memcacheConstants.OVFL_HEAD_TRIM) # exptime, maxcount, ovflaction
+        self.mc.setattr("lkey", 0, 0, 0, 0, 0, 0, memcacheConstants.OVFL_HEAD_TRIM) 
         self.assertEquals(memcacheConstants.OVFL_HEAD_TRIM,
                           self.mc.getattr("lkey", memcacheConstants.ATTR_OVFLACTION))
         self.mc.lop_insert("lkey", 2, "datums")
@@ -199,7 +236,7 @@ class ComplianceTest(unittest.TestCase):
         self.mc.lop_insert("lkey", 0, "datumt")
         self.assertEquals((17, 5, ["datumt","datum1","datum2","datums","datum0"]),
                           self.mc.lop_get("lkey", 0, -1))
-        self.mc.setattr("lkey", 0, 0, 0, 0, 1, memcacheConstants.OVFL_ERROR) # exptime, maxcount, ovflaction
+        self.mc.setattr("lkey", 0, 0, 0, 0, 0, 0, memcacheConstants.OVFL_ERROR)
         self.assertEquals(memcacheConstants.OVFL_ERROR,
                           self.mc.getattr("lkey", memcacheConstants.ATTR_OVFLACTION))
         try:
@@ -220,12 +257,12 @@ class ComplianceTest(unittest.TestCase):
         self.assertEquals((17, 5, ["datumt","datum1","datum2","datums","datum0"]),
                           self.mc.lop_get("lkey", 0, -1))
         try:
-            self.mc.setattr("lkey", 0, 0, 0, 0, 1, memcacheConstants.OVFL_SMALLEST_TRIM)
+            self.mc.setattr("lkey", 0, 0, 0, 0, 0, 0, memcacheConstants.OVFL_SMALLEST_TRIM)
             self.fail("expected bad value.")
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_BADVALUE, e.status)
         try:
-            self.mc.setattr("lkey", 0, 0, 0, 0, 1, memcacheConstants.OVFL_LARGEST_TRIM)
+            self.mc.setattr("lkey", 0, 0, 0, 0, 0, 0, memcacheConstants.OVFL_LARGEST_TRIM)
             self.fail("expected bad value.")
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_BADVALUE, e.status)
@@ -248,11 +285,12 @@ class ComplianceTest(unittest.TestCase):
 
     def testLOPNotLISTError(self):
         """ Test lop not list item error functionality. """
+        create = 1
         self.mc.set("x", 5, 19, "some value")
         self.assertNotExists("skey")
         self.assertNotExists("bkey")
-        self.mc.sop_insert("skey", "datum0", 1, 13, 0, 0)
-        self.mc.bop_insert("bkey", 1, "datum0", 1, 15, 0, 0)
+        self.mc.sop_insert("skey", "datum0", create, 13, 0, 0)
+        self.mc.bop_insert("bkey", 1, "datum0", create, 15, 0, 0)
         try:
             self.mc.lop_insert("x", -1, "datum1")
             self.fail("expected not supported operation, bad type.")
@@ -305,8 +343,9 @@ class ComplianceTest(unittest.TestCase):
 
     def testLOPNotKVError(self):
         """ Test lop not kv item error functionality. """
+        create = 1
         self.assertNotExists("lkey")
-        self.mc.lop_insert("lkey", -1, "datum1", 1, 17, 60, 1000)
+        self.mc.lop_insert("lkey", -1, "datum1", create, 17, 60, 1000)
         self.mc.lop_insert("lkey", -1, "datum2")
         self.mc.lop_insert("lkey", -1, "datum3")
         self.assertEquals((17, 3, ["datum1","datum2","datum3"]),
@@ -351,11 +390,12 @@ class ComplianceTest(unittest.TestCase):
 
     def testLOPExpire(self):
         """ Test lop expire functionality. """
+        create = 1
         self.assertNotExists("lkey")
-        self.mc.lop_insert("lkey", -1, "datum1", 1, 17, 60, 1000)
+        self.mc.lop_insert("lkey", -1, "datum1", create, 17, 60, 1000)
         self.mc.lop_insert("lkey", -1, "datum2")
         self.mc.lop_insert("lkey", -1, "datum3")
-        self.mc.setattr("lkey", 1, 2, 0, 0, 0, 0); # exptime, maxcount, ovflactoin
+        self.mc.setattr("lkey", 1, 2, 0, 0, 0, 0, memcacheConstants.OVFL_NONE);
         self.assertEquals((17, 3, ["datum1","datum2","datum3"]),
                           self.mc.lop_get("lkey", 0, -1))
         time.sleep(2.1)
@@ -368,8 +408,9 @@ class ComplianceTest(unittest.TestCase):
 
     def testLOPFlush(self):
         """ Test lop flush functionality. """
+        create = 1
         self.assertNotExists("lkey")
-        self.mc.lop_insert("lkey", -1, "datum1", 1, 17, 60, 1000)
+        self.mc.lop_insert("lkey", -1, "datum1", create, 17, 60, 1000)
         self.mc.lop_insert("lkey", -1, "datum2")
         self.mc.lop_insert("lkey", -1, "datum3")
         self.assertEquals((17, 3, ["datum1","datum2","datum3"]),

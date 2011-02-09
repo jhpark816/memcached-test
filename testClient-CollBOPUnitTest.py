@@ -232,37 +232,77 @@ class ComplianceTest(unittest.TestCase):
                 self.fail("expected NOT_FOUND_ELEMENT.")
             except MemcachedError, e:
                 self.assertEquals(memcacheConstants.ERR_ELEM_NOENT, e.status)
-            self.mc.bop_delete("bkey", 0, 100000);
+            drop_if_empty = 1 
+            self.mc.bop_delete("bkey", 0, 100000, 0, drop_if_empty);
             self.assertNotExists("bkey")
+
+    def testEmptyCollectionOfBTreeType(self):
+        """ Test empty B+tree functionality. """
+        create = 1
+        delete = 1
+        self.assertNotExists("bkey")
+        self.mc.bop_create("bkey", 11, 0, -1, 0)
+        self.mc.bop_insert("bkey", 0, "datum0")
+        self.mc.bop_insert("bkey", 10, "datum1")
+        self.mc.bop_insert("bkey", 20, "datum2")
+        self.mc.bop_insert("bkey", 30, "datum3")
+        self.mc.bop_insert("bkey", 40, "datum4")
+        self.assertEquals(5, self.mc.getattr("bkey", memcacheConstants.ATTR_COUNT))
+        self.assertEquals(10000, self.mc.getattr("bkey", memcacheConstants.ATTR_MAXCOUNT))
+        self.assertEquals((11, 5), self.mc.bop_count("bkey", 0, 40))
+        self.assertEquals((11, 5, [0,10,20,30,40], ["datum0","datum1","datum2","datum3","datum4"]),
+                          self.mc.bop_get("bkey", 0, 40))
+        self.mc.bop_delete("bkey", 0, 20, 0)
+        self.assertEquals((11, 2), self.mc.bop_count("bkey", 20, 40))
+        self.assertEquals((11, 2, [30,40], ["datum3","datum4"]),
+                          self.mc.bop_get("bkey", 20, 40, 0, 0, delete))
+        try:
+            self.mc.bop_delete("bkey", 0, 20)
+            self.fail("expected NOT_FOUND_ELEMENT.")
+        except MemcachedError, e:
+            self.assertEquals(memcacheConstants.ERR_ELEM_NOENT, e.status)
+        try:
+            self.mc.bop_get("bkey", 0, 20)
+            self.fail("expected NOT_FOUND_ELEMENT.")
+        except MemcachedError, e:
+            self.assertEquals(memcacheConstants.ERR_ELEM_NOENT, e.status)
+        self.assertEquals(0, self.mc.getattr("bkey", memcacheConstants.ATTR_COUNT))
+        self.assertEquals(10000, self.mc.getattr("bkey", memcacheConstants.ATTR_MAXCOUNT))
+        self.mc.bop_insert("bkey", 0, "datum0")
+        self.mc.bop_insert("bkey", 10, "datum1")
+        self.mc.bop_insert("bkey", 20, "datum2")
+        self.assertEquals((11, 3), self.mc.bop_count("bkey", 0, 50))
+        drop_if_empty = 1 
+        self.assertEquals((11, 3, [0,10,20], ["datum0","datum1","datum2"]),
+                          self.mc.bop_get("bkey", 0, 50, 0, 0, delete, drop_if_empty))
+        self.assertNotExists("bkey")
 
     def testBOPInsertFailCheck(self):
         """ Test bop insert error check functionality. """
+        create = 1
         self.assertNotExists("bkey")
         try:
             self.mc.bop_insert("bkey", 10, "datum1")
             self.fail("expected not found error.")
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_NOT_FOUND, e.status)
-        self.mc.bop_insert("bkey", 10, "datum1", 1, 11, 0, 1000)
+        self.mc.bop_insert("bkey", 10, "datum1", create, 11, 0, 1000)
         try:
             self.mc.bop_insert("bkey", 10, "datum1")
             self.fail("expected ELEMENT_EXISTS.")
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_ELEM_EXISTS, e.status)
-        #try:
-        #    self.mc.bop_insert("bkey", 20, "datum_new")
-        #    self.fail("expected bad value.")
-        #except MemcachedError, e:
-        #    self.assertEquals(memcacheConstants.ERR_BADVALUE, e.status)
+        self.mc.bop_insert("bkey", 15, "datum_new")
         self.mc.bop_insert("bkey", 20, "datum2")
         self.mc.delete("bkey")
         self.assertNotExists("bkey")
 
     def testBOPOverflowCheck(self):
         """ Test bop overflow functionality. """
+        create = 1
         self.assertNotExists("bkey")
-        self.mc.bop_insert("bkey", 10, "datum1", 1, 11, 0, 1000)
-        self.mc.setattr("bkey", 0, 0, 1, 5, 0, 0); # exptime, maxcount, ovflaction 
+        self.mc.bop_insert("bkey", 10, "datum1", create, 11, 0, 1000)
+        self.mc.setattr("bkey", 0, 0, 1, 5, 0, 0, memcacheConstants.OVFL_NONE)
         self.assertEquals(1, self.mc.getattr("bkey", memcacheConstants.ATTR_COUNT))
         self.assertEquals(5, self.mc.getattr("bkey", memcacheConstants.ATTR_MAXCOUNT))
         self.assertEquals(memcacheConstants.OVFL_SMALLEST_TRIM,
@@ -272,6 +312,10 @@ class ComplianceTest(unittest.TestCase):
         self.mc.bop_insert("bkey", 70, "datum7")
         self.mc.bop_insert("bkey", 90, "datum9")
         self.assertEquals(5, self.mc.getattr("bkey", memcacheConstants.ATTR_COUNT))
+        self.assertEquals(5, self.mc.getattr("bkey", memcacheConstants.ATTR_MAXCOUNT))
+        self.assertEquals((11, 5), self.mc.bop_count("bkey", 0, 1000))
+        self.assertEquals((11, 5, [10,30,50,70,90], ["datum1","datum3","datum5","datum7","datum9"]),
+                          self.mc.bop_get("bkey", 0, 100))
         self.mc.bop_insert("bkey", 80, "datum8")
         try:
             self.mc.bop_insert("bkey", 10, "datum1")
@@ -279,9 +323,10 @@ class ComplianceTest(unittest.TestCase):
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_BKEYOOR, e.status)
         self.mc.bop_insert("bkey", 60, "datum6")
-        self.assertEquals((11, 5, [50, 60, 70, 80, 90], ["datum5","datum6","datum7","datum8","datum9"]),
+        self.assertEquals((11, 5), self.mc.bop_count("bkey", 0, 1000))
+        self.assertEquals((11, 5, [50,60,70,80,90], ["datum5","datum6","datum7","datum8","datum9"]),
                           self.mc.bop_get("bkey", 0, 100))
-        self.mc.setattr("bkey", 0, 0, 0, 0, 1, memcacheConstants.OVFL_LARGEST_TRIM) # exptime, maxcount, ovflaction 
+        self.mc.setattr("bkey", 0, 0, 0, 0, 0, 0, memcacheConstants.OVFL_LARGEST_TRIM)
         self.mc.bop_insert("bkey", 30, "datum3")
         self.mc.bop_insert("bkey", 40, "datum4")
         try:
@@ -289,9 +334,9 @@ class ComplianceTest(unittest.TestCase):
             self.fail("expected bkey out of range.")
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_BKEYOOR, e.status)
-        self.assertEquals((11, 5, [30, 40, 50, 60, 70], ["datum3","datum4","datum5","datum6","datum7" ]),
+        self.assertEquals((11, 5, [30,40,50,60,70], ["datum3","datum4","datum5","datum6","datum7"]),
                           self.mc.bop_get("bkey", 0, 100))
-        self.mc.setattr("bkey", 0, 0, 0, 0, 1, memcacheConstants.OVFL_ERROR) # exptime, maxcount, ovflaction 
+        self.mc.setattr("bkey", 0, 0, 0, 0, 0, 0, memcacheConstants.OVFL_ERROR)
         try:
             self.mc.bop_insert("bkey", 20, "datum2")
             self.fail("expected data structure full.")
@@ -303,15 +348,78 @@ class ComplianceTest(unittest.TestCase):
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_OVERFLOW, e.status)
         try:
-            self.mc.setattr("bkey", 0, 0, 0, 0, 1, memcacheConstants.OVFL_HEAD_TRIM)
+            self.mc.setattr("bkey", 0, 0, 0, 0, 0, 0, memcacheConstants.OVFL_HEAD_TRIM)
             self.fail("expected bad value.")
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_BADVALUE, e.status)
         try:
-            self.mc.setattr("bkey", 0, 0, 0, 0, 1, memcacheConstants.OVFL_TAIL_TRIM)
+            self.mc.setattr("bkey", 0, 0, 0, 0, 0, 0, memcacheConstants.OVFL_TAIL_TRIM)
             self.fail("expected bad value.")
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_BADVALUE, e.status)
+        self.mc.delete("bkey")
+        self.assertNotExists("bkey")
+
+    def testBOPMaxBKeyRangeCheck(self):
+        """ Test maxbkeyrange attribute functionality. """
+        create = 1
+        self.assertNotExists("bkey")
+        self.mc.bop_insert("bkey", 10, "datum1", create, 11, 0, 1000)
+        self.assertEquals(1, self.mc.getattr("bkey", memcacheConstants.ATTR_COUNT))
+        self.assertEquals(1000, self.mc.getattr("bkey", memcacheConstants.ATTR_MAXCOUNT))
+        self.assertEquals(0, self.mc.getattr("bkey", memcacheConstants.ATTR_MAXBKEYRANGE))
+        self.mc.setattr("bkey", 0, 0, 0, 0, 1, 80, memcacheConstants.OVFL_NONE)
+        self.assertEquals(80, self.mc.getattr("bkey", memcacheConstants.ATTR_MAXBKEYRANGE))
+        self.assertEquals(memcacheConstants.OVFL_SMALLEST_TRIM,
+                          self.mc.getattr("bkey", memcacheConstants.ATTR_OVFLACTION))
+        self.mc.bop_insert("bkey", 30, "datum3")
+        self.mc.bop_insert("bkey", 50, "datum5")
+        self.mc.bop_insert("bkey", 70, "datum7")
+        self.mc.bop_insert("bkey", 90, "datum9")
+        self.assertEquals(5, self.mc.getattr("bkey", memcacheConstants.ATTR_COUNT))
+        self.assertEquals(1000, self.mc.getattr("bkey", memcacheConstants.ATTR_MAXCOUNT))
+        self.assertEquals((11, 5), self.mc.bop_count("bkey", 0, 1000))
+        self.assertEquals((11, 5, [10,30,50,70,90], ["datum1","datum3","datum5","datum7","datum9"]),
+                          self.mc.bop_get("bkey", 0, 1000))
+        self.mc.bop_insert("bkey", 80, "datum8")
+        self.assertEquals((11, 6, [10,30,50,70,80,90],
+                           ["datum1","datum3","datum5","datum7","datum8","datum9"]),
+                          self.mc.bop_get("bkey", 0, 1000))
+        try:
+            self.mc.bop_insert("bkey", 0, "datum0")
+            self.fail("expected bkey out of range.")
+        except MemcachedError, e:
+            self.assertEquals(memcacheConstants.ERR_BKEYOOR, e.status)
+        self.mc.bop_insert("bkey", 100, "datum10")
+        self.assertEquals((11, 6, [30,50,70,80,90,100],
+                           ["datum3","datum5","datum7","datum8","datum9","datum10"]),
+                          self.mc.bop_get("bkey", 0, 1000))
+        self.assertEquals((11, 6), self.mc.bop_count("bkey", 0, 1000))
+        self.mc.setattr("bkey", 0, 0, 0, 0, 0, 0, memcacheConstants.OVFL_LARGEST_TRIM)
+        self.assertEquals(80, self.mc.getattr("bkey", memcacheConstants.ATTR_MAXBKEYRANGE))
+        self.assertEquals(memcacheConstants.OVFL_LARGEST_TRIM,
+                          self.mc.getattr("bkey", memcacheConstants.ATTR_OVFLACTION))
+        self.mc.bop_insert("bkey", 40, "datum4")
+        self.assertEquals((11, 7, [30,40,50,70,80,90,100],
+                           ["datum3","datum4","datum5","datum7","datum8","datum9","datum10"]),
+                          self.mc.bop_get("bkey", 0, 1000))
+        try:
+            self.mc.bop_insert("bkey", 120, "datum12")
+            self.fail("expected bkey out of range.")
+        except MemcachedError, e:
+            self.assertEquals(memcacheConstants.ERR_BKEYOOR, e.status)
+        self.mc.bop_insert("bkey", 10, "datum1")
+        self.assertEquals((11, 7, [10,30,40,50,70,80,90],
+                           ["datum1","datum3","datum4","datum5","datum7","datum8","datum9"]),
+                          self.mc.bop_get("bkey", 0, 1000))
+        self.mc.setattr("bkey", 0, 0, 0, 0, 1, 0, memcacheConstants.OVFL_NONE)
+        self.assertEquals(0, self.mc.getattr("bkey", memcacheConstants.ATTR_MAXBKEYRANGE))
+        self.mc.bop_insert("bkey", 0, "datum0")
+        self.mc.bop_insert("bkey", 60, "datum6")
+        self.mc.bop_insert("bkey", 120, "datum12")
+        self.assertEquals((11, 10, [0,10,30,40,50,60,70,80,90,120],
+                           ["datum0","datum1","datum3","datum4","datum5","datum6","datum7","datum8","datum9","datum12"]),
+                          self.mc.bop_get("bkey", 0, 1000))
         self.mc.delete("bkey")
         self.assertNotExists("bkey")
 
@@ -388,8 +496,9 @@ class ComplianceTest(unittest.TestCase):
 
     def testBOPNotKVError(self):
         """ Test lop not kv item error functionality. """
+        create = 1
         self.assertNotExists("bkey")
-        self.mc.bop_insert("bkey", 10, "datum1", 1, 11, 60, 1000)
+        self.mc.bop_insert("bkey", 10, "datum1", create, 11, 60, 1000)
         self.mc.bop_insert("bkey", 20, "datum2")
         self.mc.bop_insert("bkey", 30, "datum3")
         self.assertEquals((11, 3, [10, 20, 30], ["datum1","datum2","datum3"]),
@@ -434,11 +543,12 @@ class ComplianceTest(unittest.TestCase):
 
     def testBOPExpire(self):
         """ Test bop expire functionality. """
+        create = 1
         self.assertNotExists("bkey")
-        self.mc.bop_insert("bkey", 10, "datum1", 1, 11, 60, 1000)
+        self.mc.bop_insert("bkey", 10, "datum1", create, 11, 60, 1000)
         self.mc.bop_insert("bkey", 20, "datum2")
         self.mc.bop_insert("bkey", 30, "datum3")
-        self.mc.setattr("bkey", 1, 2, 0, 0, 0, 0); # exptime, maxcount, ovflaction
+        self.mc.setattr("bkey", 1, 2, 0, 0, 0, 0, memcacheConstants.OVFL_NONE);
         self.assertEquals((11, 3, [10, 20, 30], ["datum1","datum2","datum3"]),
                           self.mc.bop_get("bkey", 0, 100))
         time.sleep(2.1)
@@ -451,8 +561,9 @@ class ComplianceTest(unittest.TestCase):
 
     def testBOPFlush(self):
         """ Test bop flush functionality. """
+        create = 1
         self.assertNotExists("bkey")
-        self.mc.bop_insert("bkey", 10, "datum1", 1, 11, 60, 1000)
+        self.mc.bop_insert("bkey", 10, "datum1", create, 11, 60, 1000)
         self.mc.bop_insert("bkey", 20, "datum2")
         self.mc.bop_insert("bkey", 30, "datum3")
         self.assertEquals((11, 3, [10, 20, 30], ["datum1","datum2","datum3"]),

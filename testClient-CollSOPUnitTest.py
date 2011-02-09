@@ -42,13 +42,15 @@ class ComplianceTest(unittest.TestCase):
 # JHPARK: SOP test begin
     def testSOPInsertGet(self):
         """ Test sop insert, get functionality. """
+        create = 1
         self.assertNotExists("skey")
-        self.mc.sop_insert("skey", "datum0", 1, 13, 0, 0)
+        self.mc.sop_insert("skey", "datum0", create, 13, 0, 0)
         self.mc.sop_insert("skey", "datum1")
         self.mc.sop_insert("skey", "datum2")
         self.mc.sop_insert("skey", "datum3")
         self.mc.sop_insert("skey", "datum4")
         self.assertEquals(5, self.mc.getattr("skey", memcacheConstants.ATTR_COUNT))
+        self.assertEquals(4000, self.mc.getattr("skey", memcacheConstants.ATTR_MAXCOUNT))
         self.assertEquals((13, 5, set(["datum0","datum1","datum2","datum3","datum4"])),
                           self.mc.sop_get("skey", 10))
         self.assertEquals(1, self.mc.sop_exist("skey", "datum2"))
@@ -59,8 +61,9 @@ class ComplianceTest(unittest.TestCase):
 
     def testSOPInsertDeletePop(self):
         """ Test sop insert, delete, get with delete functionality. """
+        create = 1
         self.assertNotExists("skey")
-        self.mc.sop_insert("skey", "datum0", 1, 13, 0, -1)
+        self.mc.sop_insert("skey", "datum0", create, 13, 0, -1)
         self.mc.sop_insert("skey", "datum1")
         self.mc.sop_insert("skey", "datum2")
         self.mc.sop_insert("skey", "datum3")
@@ -76,6 +79,7 @@ class ComplianceTest(unittest.TestCase):
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_ELEM_EXISTS, e.status)
         self.assertEquals(10, self.mc.getattr("skey", memcacheConstants.ATTR_COUNT))
+        self.assertEquals(50000, self.mc.getattr("skey", memcacheConstants.ATTR_MAXCOUNT))
         self.assertEquals((13, 10, set(["datum0", "datum1","datum2","datum3", "datum4",
                                         "datum5", "datum6", "datum7", "datum8", "datum9"])),
                           self.mc.sop_get("skey", 10))
@@ -94,38 +98,71 @@ class ComplianceTest(unittest.TestCase):
             self.fail("expected NOT_FOUND_ELEMENT.")
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_ELEM_NOENT, e.status)
+        delete = 1 
+        drop_if_empty = 1
         self.assertEquals((13, 5, set(["datum0", "datum2", "datum4", "datum6", "datum8"])),
-                          self.mc.sop_get("skey", 10, 1))
+                          self.mc.sop_get("skey", 10, delete, drop_if_empty))
         self.assertNotExists("skey")
 
+    def testEmptyCollectionOfSetType(self):
+        delete = 1
+        self.assertNotExists("skey")
+        self.mc.sop_create("skey", 13, 0, -1)
+        self.mc.sop_insert("skey", "datum0")
+        self.mc.sop_insert("skey", "datum1")
+        self.mc.sop_insert("skey", "datum2")
+        self.mc.sop_insert("skey", "datum3")
+        self.mc.sop_insert("skey", "datum4")
+        self.assertEquals(5, self.mc.getattr("skey", memcacheConstants.ATTR_COUNT))
+        self.assertEquals(50000, self.mc.getattr("skey", memcacheConstants.ATTR_MAXCOUNT))
+        self.assertEquals((13, 5, set(["datum0", "datum1","datum2","datum3", "datum4"])),
+                          self.mc.sop_get("skey", 0))
+        self.mc.sop_delete("skey", "datum0")
+        self.mc.sop_delete("skey", "datum2")
+        self.mc.sop_delete("skey", "datum4")
+        self.assertEquals((13, 2, set(["datum1","datum3"])),
+                          self.mc.sop_get("skey", 0, delete))
+        try:
+            self.mc.sop_delete("skey", "datum3")
+            self.fail("expected NOT_FOUND_ELEMENT.")
+        except MemcachedError, e:
+            self.assertEquals(memcacheConstants.ERR_ELEM_NOENT, e.status)
+        self.assertEquals(0, self.mc.getattr("skey", memcacheConstants.ATTR_COUNT))
+        self.assertEquals(50000, self.mc.getattr("skey", memcacheConstants.ATTR_MAXCOUNT))
+        self.mc.sop_insert("skey", "datum0")
+        self.mc.sop_insert("skey", "datum1")
+        self.mc.sop_insert("skey", "datum2")
+        drop_if_empty = 1
+        self.assertEquals((13, 3, set(["datum0","datum1","datum2"])),
+                          self.mc.sop_get("skey", 0, delete, drop_if_empty))
+        self.assertNotExists("skey")
+        
     def testSOPInsertFailCheck(self):
         """ Test sop insert error check functionality. """
+        create = 1
         self.assertNotExists("skey")
         try:
             self.mc.sop_insert("skey", "datum0")
             self.fail("expected not found error.")
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_NOT_FOUND, e.status)
-        self.mc.sop_insert("skey", "datum0", 1, 13, 0, 1000)
+        self.mc.sop_insert("skey", "datum0", create, 13, 0, 1000)
         try:
             self.mc.sop_insert("skey", "datum0")
             self.fail("expected ELEMENT_EXISTS.")
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_ELEM_EXISTS, e.status)
-        #try:
-        #    self.mc.sop_insert("skey", "datum_new")
-        #    self.fail("expected bad value.")
-        #except MemcachedError, e:
-        #    self.assertEquals(memcacheConstants.ERR_BADVALUE, e.status)
+        self.mc.sop_insert("skey", "datum_new")
         self.mc.sop_insert("skey", "datum1")
         self.mc.delete("skey")
         self.assertNotExists("skey")
 
     def testSOPOverflowCheck(self):
         """ Test sop overflow functionality. """
+        create = 1
         self.assertNotExists("skey")
-        self.mc.sop_insert("skey", "datum1", 1, 13, 0, 1000)
-        self.mc.setattr("skey", 0, 0, 1, 5, 0, 0) # exptime, maxcount, ovflaction
+        self.mc.sop_insert("skey", "datum1", create, 13, 0, 1000)
+        self.mc.setattr("skey", 0, 0, 1, 5, 0, 0, memcacheConstants.OVFL_NONE)
         self.assertEquals(1, self.mc.getattr("skey", memcacheConstants.ATTR_COUNT))
         self.assertEquals(5, self.mc.getattr("skey", memcacheConstants.ATTR_MAXCOUNT))
         self.assertEquals(memcacheConstants.OVFL_ERROR,
@@ -142,22 +179,22 @@ class ComplianceTest(unittest.TestCase):
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_OVERFLOW, e.status)
         try:
-            self.mc.setattr("skey", 0, 0, 0, 0, 1, memcacheConstants.OVFL_HEAD_TRIM)
+            self.mc.setattr("skey", 0, 0, 0, 0, 0, 0, memcacheConstants.OVFL_HEAD_TRIM)
             self.fail("expected bad value.")
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_BADVALUE, e.status)
         try:
-            self.mc.setattr("skey", 0, 0, 0, 0, 1, memcacheConstants.OVFL_TAIL_TRIM)
+            self.mc.setattr("skey", 0, 0, 0, 0, 0, 0, memcacheConstants.OVFL_TAIL_TRIM)
             self.fail("expected bad value.")
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_BADVALUE, e.status)
         try:
-            self.mc.setattr("skey", 0, 0, 0, 0, 1, memcacheConstants.OVFL_SMALLEST_TRIM)
+            self.mc.setattr("skey", 0, 0, 0, 0, 0, 0, memcacheConstants.OVFL_SMALLEST_TRIM)
             self.fail("expected bad value.")
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_BADVALUE, e.status)
         try:
-            self.mc.setattr("skey", 0, 0, 0, 0, 1, memcacheConstants.OVFL_LARGEST_TRIM)
+            self.mc.setattr("skey", 0, 0, 0, 0, 0, 0, memcacheConstants.OVFL_LARGEST_TRIM)
             self.fail("expected bad value.")
         except MemcachedError, e:
             self.assertEquals(memcacheConstants.ERR_BADVALUE, e.status)
@@ -185,11 +222,12 @@ class ComplianceTest(unittest.TestCase):
 
     def testSOPNotSETError(self):
         """ Test sop not set item error functionality. """
+        create = 1
         self.mc.set("x", 5, 19, "some value")
         self.assertNotExists("lkey")
         self.assertNotExists("bkey")
-        self.mc.lop_insert("lkey", 0, "datum0", 1, 17, 0, 0)
-        self.mc.bop_insert("bkey", 1, "datum0", 1, 15, 0, 0)
+        self.mc.lop_insert("lkey", 0, "datum0", create, 17, 0, 0)
+        self.mc.bop_insert("bkey", 1, "datum0", create, 15, 0, 0)
         try:
             self.mc.sop_insert("x", "datum1")
             self.fail("expected not supported operation, bad type.")
@@ -257,8 +295,9 @@ class ComplianceTest(unittest.TestCase):
 
     def testSOPNotKVError(self):
         """ Test sop not kv item error functionality. """
+        create = 1
         self.assertNotExists("skey")
-        self.mc.sop_insert("skey", "datum1", 1, 13, 60, 1000)
+        self.mc.sop_insert("skey", "datum1", create, 13, 60, 1000)
         self.mc.sop_insert("skey", "datum2")
         self.mc.sop_insert("skey", "datum3")
         self.assertEquals((13, 3, set(["datum1","datum2","datum3"])),
@@ -303,11 +342,12 @@ class ComplianceTest(unittest.TestCase):
 
     def testSOPExpire(self):
         """ Test sop expire functionality. """
+        create = 1
         self.assertNotExists("skey")
-        self.mc.sop_insert("skey", "datum1", 1, 13, 60, 1000)
+        self.mc.sop_insert("skey", "datum1", create, 13, 60, 1000)
         self.mc.sop_insert("skey", "datum2")
         self.mc.sop_insert("skey", "datum3")
-        self.mc.setattr("skey", 1, 2, 0, 0, 0, 0) # exptime, maxcount, ovflaction
+        self.mc.setattr("skey", 1, 2, 0, 0, 0, 0, memcacheConstants.OVFL_NONE)
         self.assertEquals((13, 3, set(["datum1","datum2","datum3"])),
                           self.mc.sop_get("skey", 5))
         time.sleep(2.1)
@@ -320,8 +360,9 @@ class ComplianceTest(unittest.TestCase):
 
     def testSOPFlush(self):
         """ Test sop flush functionality. """
+        create = 1
         self.assertNotExists("skey")
-        self.mc.sop_insert("skey", "datum1", 1, 13, 60, 1000)
+        self.mc.sop_insert("skey", "datum1", create, 13, 60, 1000)
         self.mc.sop_insert("skey", "datum2")
         self.mc.sop_insert("skey", "datum3")
         self.assertEquals((13, 3, set(["datum1","datum2","datum3"])),
